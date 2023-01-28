@@ -1,0 +1,15 @@
+Decision Tree:
+	* max_depth
+	* min_leaf
+	
+Neural Network:
+	* # of hidden layers
+	* # of neurons in each hidden layer
+	* activation function? try using rectified linear unit (ReLU)
+Boosting:
+	* # of weak learners
+SVM:
+	* kernal type
+KNN:
+	* k
+	* distances
