@@ -7,57 +7,20 @@ from time import perf_counter
 import matplotlib.pyplot as plt
 
 
-def plot_loss_curve(data):
-    # Split the data into features and target
-    X = data.drop("Survived", axis=1)
-    y = data["Survived"]
-
-    # Pre-process the data
-    X = pd.get_dummies(X)
-    X.fillna(X.mean(), inplace=True)
-
-    # Split the data into training and test sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
-    # Scale the data to improve the performance of the neural network
-    scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
-
-    # Create an instance of the MLPClassifier
-    model = MLPClassifier(hidden_layer_sizes=(10, 10), max_iter=300, early_stopping=True)
-
-    # Fit the model to the training data
-    model.fit(X_train, y_train)
-
-    # Get the loss history
-    loss_history = model.loss_curve_
-
-    # Plot the loss curve
-    plt.plot(loss_history)
-    plt.xlabel('Number of iterations')
-    plt.ylabel('Loss')
-    plt.title('Loss Curve')
-    plt.show()
-
-
 def main():
     for dataset in ["titanic", "winequality-red"]:
         print(f"\nProcessing {dataset.upper()}")
 
-        df = pd.read_csv(f"../datasets/{dataset}.csv")
+        data = pd.read_csv(f"../datasets/{dataset}.csv")
 
         if dataset == "titanic":
             predict_col = "Survived"
         else:
             predict_col = "quality"
 
-        # Plot the loss curve (see function above)
-        # plot_loss_curve(data=df)
-
         # Split the data into features and target
-        X = df.drop([predict_col], axis=1)
-        y = df[predict_col]
+        X = data.drop(predict_col, axis=1)
+        y = data[predict_col]
 
         # Pre-process the data
         X = pd.get_dummies(X)
@@ -72,56 +35,91 @@ def main():
         X_test = scaler.transform(X_test)
 
         hyperparameters = [
-            "activation",
-            "hidden_layers",
-            ""
+            # "activation",
+            # "hidden_layer_number",
+            "hidden_layer_nodes"
         ]
 
         for hyperparameter in hyperparameters:
 
-            if hyperparameter == "hidden_layers":
-                print("Testing Hidden Layers")
-                f1_scores = []
+            if hyperparameter == "activation":
+                print("Testing Activation")
+                f1_scores = {}
 
-                # Iterate through different numbers of hidden layers
-                for num_layers in range(1, 11):
-                    # Create an instance of the MLPClassifier
-                    model = MLPClassifier(hidden_layer_sizes=(10,) * num_layers, max_iter=300, early_stopping=True)
+                # iterate through different activation types
+                for activation in ['identity', 'logistic', 'tanh', 'relu']:
+                    # create an MLPClassifier object with the current activation type
+                    mlp = MLPClassifier(hidden_layer_sizes=(10,), activation=activation)
 
-                    # Fit the model to the training data
-                    model.fit(X_train, y_train)
+                    # fit the model on the training data
+                    mlp.fit(X_train, y_train)
 
-                    # Predict on the test data
-                    y_pred = model.predict(X_test)
+                    # make predictions on the test set
+                    y_pred = mlp.predict(X_test)
 
-                    # Get the F1 score
-                    f1 = f1_score(y_test, y_pred)
+                    # calculate the F1 score
+                    f1 = f1_score(y_test, y_pred, average="weighted")
 
-                    # Append the F1 score to the list
-                    f1_scores.append(f1)
+                    # add the F1 score to the dictionary
+                    f1_scores[activation] = f1
 
-                # Plot the F1 scores
-                plt.plot(range(1, 11), f1_scores)
-                plt.xlabel('Number of hidden layers')
-                plt.ylabel('F1 score')
-                plt.title('F1 score vs Number of hidden layers')
+                # plot the F1 scores
+                plt.bar(f1_scores.keys(), f1_scores.values())
+                plt.title(f"{dataset} F1 Score")
+                plt.xlabel("Activation Type")
+                plt.ylabel("F1 Score")
                 plt.show()
 
-            # # Create and fit the neural network
-            # mlp = MLPClassifier(hidden_layer_sizes=(10,), max_iter=1000)
-            # mlp.fit(X_train, y_train)
-            #
-            # # time the fit and prediction times
-            # t1 = perf_counter()
-            # mlp.fit(X_train, y_train)
-            # t2 = perf_counter()
-            # y_pred_test = mlp.predict(X_test)
-            # t3 = perf_counter()
-            #
-            # # Print the accuracy of the model on the test set
-            # accuracy = mlp.score(X_test, y_test)
-            # f1 = f1_score(y_test, y_pred_test, average='weighted')
-            # print("Accuracy:", accuracy)
+                ######### End of activation type comparison
+
+            elif hyperparameter == "hidden_layer_number":
+                # Iterate through different numbers of hidden layers
+                hidden_layers = [i for i in range(1, 11, 1)]
+                f1_train = []
+                f1_test = []
+                for hl in hidden_layers:
+                    print(f"hidden layer: {hl}")
+                    model = MLPClassifier(hidden_layer_sizes=(hl,), max_iter=3000, random_state=44)
+                    model.fit(X_train, y_train)
+                    y_train_pred = model.predict(X_train)
+                    y_test_pred = model.predict(X_test)
+                    f1_train.append(f1_score(y_train, y_train_pred, average="weighted"))
+                    f1_test.append(f1_score(y_test, y_test_pred, average="weighted"))
+
+                # Plot the F1 scores
+                plt.plot(hidden_layers, f1_train, label='F1 Train Score')
+                plt.plot(hidden_layers, f1_test, label='F1 Test Score')
+                plt.title(f"{dataset} Hidden Layer F1 Scores")
+                plt.xlabel("# of Hidden Layers")
+                plt.ylabel("F1 Score")
+                plt.grid()
+                plt.legend()
+                plt.show()
+
+            else:  # hidden layer nodes
+                # Iterate through different numbers of hidden layer nodes
+                hidden_layer_nodes = [10, 20, 30, 40, 50]
+                f1_train = []
+                f1_test = []
+                for hln in hidden_layer_nodes:
+                    print(f"Hidden Layer Node: {hln}")
+                    nn = MLPClassifier(hidden_layer_sizes=(hln,), max_iter=1000, random_state=44)
+                    nn.fit(X_train, y_train)
+                    y_train_pred = nn.predict(X_train)
+                    y_test_pred = nn.predict(X_test)
+                    f1_train.append(f1_score(y_train, y_train_pred))
+                    f1_test.append(f1_score(y_test, y_test_pred))
+
+                # Plot the F1 scores
+                plt.plot(hidden_layer_nodes, f1_train, label='F1 Train Score')
+                plt.plot(hidden_layer_nodes, f1_test, label='F1 Test Score')
+                plt.xlabel("# of Hidden Layers Nodes")
+                plt.ylabel('F1 score')
+                plt.title(f"{dataset} Hidden Layer Nodes F1 Scores")
+                plt.grid()
+                plt.legend()
+                plt.show()
+
 
 if __name__ == "__main__":
     main()
