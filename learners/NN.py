@@ -64,18 +64,25 @@ def main():
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
 
-    # Create and fit the neural network
-    mlp = MLPClassifier(hidden_layer_sizes=(10,), max_iter=1000)
-    mlp.fit(X_train, y_train)
+    hyperparameters = [
+        "hidden_layers",
+        ""
+    ]
 
-    # time the fit and prediction times
-    t1 = perf_counter()
-    mlp.fit(X_train, y_train)
-    t2 = perf_counter()
-    y_pred_test = mlp.predict(X_test)
-    t3 = perf_counter()
+    for hyperparameter in hyperparameters:
 
-    # Print the accuracy of the model on the test set
-    accuracy = mlp.score(X_test, y_test)
-    f1 = f1_score(y_test, y_pred_test, average='weighted')
-    print("Accuracy:", accuracy)
+        # Create and fit the neural network
+        mlp = MLPClassifier(hidden_layer_sizes=(10,), max_iter=1000)
+        mlp.fit(X_train, y_train)
+
+        # time the fit and prediction times
+        t1 = perf_counter()
+        mlp.fit(X_train, y_train)
+        t2 = perf_counter()
+        y_pred_test = mlp.predict(X_test)
+        t3 = perf_counter()
+
+        # Print the accuracy of the model on the test set
+        accuracy = mlp.score(X_test, y_test)
+        f1 = f1_score(y_test, y_pred_test, average='weighted')
+        print("Accuracy:", accuracy)
