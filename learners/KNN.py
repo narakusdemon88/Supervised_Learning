@@ -94,7 +94,7 @@ def main():
                 distance_metrics_dict = {}
 
                 for metric in distance_metrics:
-                    knn = KNeighborsClassifier(n_neighbors=5, metric=metric)
+                    knn = KNeighborsClassifier(metric=metric)
 
                     # time the fit and prediction times
                     t1 = perf_counter()
@@ -196,7 +196,6 @@ def main():
 
             # test the optimized tree
             calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, metric="euclidean", neighbors=7)
-
 
 
 if __name__ == "__main__":

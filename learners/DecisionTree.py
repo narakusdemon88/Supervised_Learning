@@ -11,8 +11,8 @@ def plot_results(title, list1, list2, ylabel, xlabel, list1_label, list2_label):
     x2, y2 = zip(*list2)
 
     plt.title(title)
-    plt.plot(x1, y1, "o-", label=list1_label)
-    plt.plot(x2, y2, "x-", label=list2_label)
+    plt.plot(x1, y1, label=list1_label)
+    plt.plot(x2, y2, label=list2_label)
     plt.legend()
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -80,7 +80,6 @@ def main():
         X = df.drop([predict_col], axis=1)
         y = df[predict_col]
 
-        # Preprocess the data
         X = pd.get_dummies(X)
         X.fillna(X.mean(), inplace=True)
 
@@ -130,7 +129,7 @@ def main():
                 print(f"{hyperparameter}: {i}, F1_Score: {f1_test, f1_train}")
 
             plot_results(
-                title=f"Decision Tree F1 Score for {hyperparameter[0].upper() + hyperparameter[1:]}",
+                title=f"Decision Tree F1 Score for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
                 list1=f1_test_scores,
                 list2=f1_train_scores,
                 xlabel=hyperparameter,
@@ -139,7 +138,7 @@ def main():
                 list2_label="Train Score")
 
             plot_results(
-                title=f"Decision Tree Time for {hyperparameter[0].upper() + hyperparameter[1:]}",
+                title=f"Decision Tree Time for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
                 list1=train_time,
                 list2=predict_time,
                 xlabel=hyperparameter,

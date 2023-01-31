@@ -6,7 +6,6 @@ from sklearn.metrics import f1_score
 from time import perf_counter
 import matplotlib.pyplot as plt
 
-
 def main():
     for dataset in ["titanic", "winequality-red"]:
         print(f"\nProcessing {dataset.upper()}")
@@ -102,6 +101,14 @@ def main():
                 f1_train = []
                 f1_test = []
                 for hln in hidden_layer_nodes:
+                    # fig, axes = plt.subplots(nrows=1, ncols=2)
+                    #
+                    # axes[0].plot(percent_indicies, train_accuracy, label="Train Accuracy")
+                    # axes[1].plot(percent_indicies, train_f1, label="F1 Train Score")
+                    #
+                    # axes[0].plot(percent_indicies, test_accuracy, label="Test Accuracy")
+                    # axes[1].plot(percent_indicies, test_f1, label="F1 Test Score")
+                    # # fig.tight_layout()
                     print(f"Hidden Layer Node: {hln}")
                     nn = MLPClassifier(hidden_layer_sizes=(hln,), max_iter=1000, random_state=44)
                     nn.fit(X_train, y_train)
