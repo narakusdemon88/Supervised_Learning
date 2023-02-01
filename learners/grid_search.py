@@ -60,15 +60,12 @@ for classifier in classifiers:
     classifier_param_grid = classifiers[classifier][1]
     grid_search = GridSearchCV(classifier_algo, classifier_param_grid, cv=5, scoring="f1", n_jobs=-1)
 
-    # Fit the grid search to the data
     grid_search.fit(X, y)
 
-    # Get the best hyperparameters
     best_params = grid_search.best_params_
     best_params["Name"] = classifier
 
-    # Get the best decision tree classifier
     best = grid_search.best_estimator_
-    df = df.append(pd.DataFrame(best_params, index=[0]), ignore_index=True)
+    # df = df.append(pd.DataFrame(best_params, index=[0]), ignore_index=True)
     print(best_params)
     df.to_csv("Best_Params.csv", index=False)
