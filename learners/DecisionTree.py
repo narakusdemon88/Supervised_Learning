@@ -52,12 +52,12 @@ def calculate_cross_val_score(X_train, y_train, dataset, max_depth=None, min_lea
     # titanic --> Titanic
     dataset_upper = dataset[0].upper() + dataset[1:]
 
-    training_sizes_percents = [(x/len(X_train))*100 for x in training_sizes]
+    training_sizes_percents = [(i/len(X_train))*100 for i in training_sizes]
 
     plt.plot(training_sizes_percents, training_scores.mean(axis=1), label="Training Score")
     plt.plot(training_sizes_percents, test_scores.mean(axis=1), label="Cross-Validation Score")
     plt.legend()
-    plt.xlabel("Sample Size Percent")
+    plt.xlabel("Sample Size %")
     plt.ylabel("F1 Score")
     plt.title(f"Learning Curve: {dataset_upper}")
     plt.grid()
