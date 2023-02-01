@@ -114,7 +114,6 @@ def main():
                 y_pred_test = clf.predict(X_test)
                 t3 = perf_counter()
 
-                # store times to list
                 train_time.append((i, t2 - t1))
                 predict_time.append((i, t3 - t2))
 

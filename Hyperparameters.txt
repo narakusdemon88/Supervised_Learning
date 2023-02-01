@@ -8,8 +8,10 @@ Neural Network:
 	* activation function? try using rectified linear unit (ReLU)
 Boosting:
 	* # of weak learners
+	* learning rate
 SVM:
 	* kernal type
+	* degree
 KNN:
 	* k
 	* distances

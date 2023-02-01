@@ -5,9 +5,10 @@ import pandas as pd
 from sklearn.metrics import f1_score
 from time import perf_counter
 import matplotlib.pyplot as plt
+from DecisionTree import plot_results
 
 def main():
-    for dataset in ["titanic", "winequality-red"]:
+    for dataset in ["winequality-red"]:
         print(f"\nProcessing {dataset.upper()}")
 
         data = pd.read_csv(f"../datasets/{dataset}.csv")
@@ -34,8 +35,8 @@ def main():
         X_test = scaler.transform(X_test)
 
         hyperparameters = [
-            # "activation",
-            # "hidden_layer_number",
+            "activation",
+            "hidden_layer_number",
             "hidden_layer_nodes"
         ]
 
@@ -45,24 +46,37 @@ def main():
                 print("Testing Activation")
                 f1_scores = {}
 
+                train_time = []
+                predict_time = []
+
                 # iterate through different activation types
                 for activation in ['identity', 'logistic', 'tanh', 'relu']:
                     # create an MLPClassifier object with the current activation type
                     mlp = MLPClassifier(hidden_layer_sizes=(10,), activation=activation)
 
-                    # fit the model on the training data
+                    t1 = perf_counter()
                     mlp.fit(X_train, y_train)
-
-                    # make predictions on the test set
+                    t2 = perf_counter()
                     y_pred = mlp.predict(X_test)
+                    t3 = perf_counter()
 
-                    # calculate the F1 score
+                    train_time.append((activation, t2 - t1))
+                    predict_time.append((activation, t3 - t2))
+
                     f1 = f1_score(y_test, y_pred, average="weighted")
 
-                    # add the F1 score to the dictionary
                     f1_scores[activation] = f1
 
-                # plot the F1 scores
+                plot_results(
+                    title=f"Neural Network Time for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
+                    list1=train_time,
+                    list2=predict_time,
+                    xlabel=hyperparameter,
+                    ylabel="Time (Seconds",
+                    list1_label="Train Time",
+                    list2_label="Predict Time"
+                )
+
                 plt.bar(f1_scores.keys(), f1_scores.values())
                 plt.title(f"{dataset} F1 Score")
                 plt.xlabel("Activation Type")
@@ -76,16 +90,36 @@ def main():
                 hidden_layers = [i for i in range(1, 11, 1)]
                 f1_train = []
                 f1_test = []
+
+                train_time = []
+                predict_time = []
+
                 for hl in hidden_layers:
                     print(f"hidden layer: {hl}")
-                    model = MLPClassifier(hidden_layer_sizes=(hl,), max_iter=3000, random_state=44)
+                    model = MLPClassifier(hidden_layer_sizes=(hl,), max_iter=3000)
+                    t1 = perf_counter()
                     model.fit(X_train, y_train)
-                    y_train_pred = model.predict(X_train)
+                    t2 = perf_counter()
                     y_test_pred = model.predict(X_test)
+                    t3 = perf_counter()
+                    y_train_pred = model.predict(X_train)
+
+                    train_time.append((hl, t2 - t1))
+                    predict_time.append((hl, t3 - t2))
+
                     f1_train.append(f1_score(y_train, y_train_pred, average="weighted"))
                     f1_test.append(f1_score(y_test, y_test_pred, average="weighted"))
 
-                # Plot the F1 scores
+                plot_results(
+                    title=f"Neural Network Time for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
+                    list1=train_time,
+                    list2=predict_time,
+                    xlabel=hyperparameter,
+                    ylabel="Time (Seconds)",
+                    list1_label="Train Time",
+                    list2_label="Predict Time"
+                )
+
                 plt.plot(hidden_layers, f1_train, label='F1 Train Score')
                 plt.plot(hidden_layers, f1_test, label='F1 Test Score')
                 plt.title(f"{dataset} Hidden Layer F1 Scores")
@@ -97,27 +131,40 @@ def main():
 
             else:  # hidden layer nodes
                 # Iterate through different numbers of hidden layer nodes
-                hidden_layer_nodes = [10, 20, 30, 40, 50]
+                hidden_layer_nodes = [i for i in range(10, 101, 10)]
+
+                train_time = []
+                predict_time = []
+
                 f1_train = []
                 f1_test = []
                 for hln in hidden_layer_nodes:
-                    # fig, axes = plt.subplots(nrows=1, ncols=2)
-                    #
-                    # axes[0].plot(percent_indicies, train_accuracy, label="Train Accuracy")
-                    # axes[1].plot(percent_indicies, train_f1, label="F1 Train Score")
-                    #
-                    # axes[0].plot(percent_indicies, test_accuracy, label="Test Accuracy")
-                    # axes[1].plot(percent_indicies, test_f1, label="F1 Test Score")
-                    # # fig.tight_layout()
                     print(f"Hidden Layer Node: {hln}")
                     nn = MLPClassifier(hidden_layer_sizes=(hln,), max_iter=1000, random_state=44)
+                    t1 = perf_counter()
                     nn.fit(X_train, y_train)
-                    y_train_pred = nn.predict(X_train)
+                    t2 = perf_counter()
                     y_test_pred = nn.predict(X_test)
-                    f1_train.append(f1_score(y_train, y_train_pred))
-                    f1_test.append(f1_score(y_test, y_test_pred))
+                    t3 = perf_counter()
 
-                # Plot the F1 scores
+                    train_time.append((hln, t2 - t1))
+                    predict_time.append((hln, t3 - t2))
+
+                    y_train_pred = nn.predict(X_train)
+
+                    f1_train.append(f1_score(y_train, y_train_pred, average="weighted"))
+                    f1_test.append(f1_score(y_test, y_test_pred, average="weighted"))
+
+                plot_results(
+                    title=f"Neural Network Time for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
+                    list1=train_time,
+                    list2=predict_time,
+                    xlabel=hyperparameter,
+                    ylabel="Time (Seconds)",
+                    list1_label="Train Time",
+                    list2_label="Predict Time"
+                )
+
                 plt.plot(hidden_layer_nodes, f1_train, label='F1 Train Score')
                 plt.plot(hidden_layer_nodes, f1_test, label='F1 Test Score')
                 plt.xlabel("# of Hidden Layers Nodes")

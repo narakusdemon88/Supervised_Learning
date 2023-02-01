@@ -48,8 +48,8 @@ def test_plot(X, y, algo, name, dataset_name):
             accuracy_list_train.append(np.sum(y_train_predictions == y_train[a]) / len(y_train[a]))
             accuracy_list_test.append(np.sum(y_test_predictions == y_train[b]) / len(y_train[b]))
 
-            f1_train_res = f1_score(y_train[a], y_train_predictions)
-            f1_test_res = f1_score(y_train[b], y_test_predictions)
+            f1_train_res = f1_score(y_train[a], y_train_predictions, average="weighted")
+            f1_test_res = f1_score(y_train[b], y_test_predictions, average="weighted")
 
             f1_train.append(f1_train_res)
             f1_test.append(f1_test_res)
@@ -85,13 +85,14 @@ def test_plot(X, y, algo, name, dataset_name):
 
     plt.grid()
 
+    plt.savefig(f"../images/base_models/{name}_for_{dataset_name}")
     plt.show()
 
 
 def main():
     for dataset in [
-        "titanic",
-        # "winequality-red"
+        # "titanic",
+        "winequality-red"
     ]:
         df = pd.read_csv(f"../datasets/{dataset}.csv")
 
@@ -108,10 +109,10 @@ def main():
 
         all_classifiers = {
             "Decision Tree": DecisionTreeClassifier(),
-            # "K Nearest Neighbors": KNeighborsClassifier(),
-            # "Neural Network": MLPClassifier(),
-            # "Support Vector Machine": SVC(),
-            # "Ada Boost": AdaBoostClassifier()
+            "K Nearest Neighbors": KNeighborsClassifier(n_jobs=-1),
+            "Neural Network": MLPClassifier(),
+            "Support Vector Machine": SVC(),
+            "Ada Boost": AdaBoostClassifier()
 
         }
         for classifer in all_classifiers:
