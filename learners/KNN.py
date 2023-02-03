@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from DecisionTree import plot_results
 
 
-def calculate_cross_val_score(X_train, y_train, dataset, metric=None, neighbors=None):
+def calculate_cross_val_score(X_train, y_train, dataset, metric=None, neighbors=None, algo=None, type=None):
     """
     :param X_train:
     :param y_train:
@@ -46,8 +46,10 @@ def calculate_cross_val_score(X_train, y_train, dataset, metric=None, neighbors=
     plt.legend()
     plt.xlabel("Sample Size Percent")
     plt.ylabel("F1 Score")
-    plt.title(f"Learning Curve: {dataset_upper}")
+    plt.title(f"Learning Curve: {dataset_upper} ({type})")
     plt.grid()
+    if algo is not None and type is not None:
+        plt.savefig(f"../images/{dataset}/{algo}/cross_validation_{type}.png")
     plt.show()
 
 
@@ -145,8 +147,11 @@ def main():
 
                 ax.legend((f1_test[0], f1_train[0]), ("F1 Test Score", "F1 Train Score"))
 
+                plt.savefig(f"../images/{dataset}/knn/f1_scores_knn.png")
+
                 plt.show()
                 # https://stackoverflow.com/questions/10369681/how-to-plot-bar-graphs-with-same-x-coordinates-side-by-side-dodged
+            # TODO: plot bar graph for different distance metrics
 
             else:
                 # Iterate through k
@@ -180,7 +185,10 @@ def main():
                 xlabel=hyperparameter,
                 ylabel="F1 Score",
                 list1_label="Test Score",
-                list2_label="Train Score")
+                list2_label="Train Score",
+                dataset=dataset,
+                algo="knn",
+                type=hyperparameter)
 
             plot_results(
                 title=f"KNN Time for {hyperparameter[0].upper() + hyperparameter[1:]}",
@@ -189,13 +197,21 @@ def main():
                 xlabel=hyperparameter,
                 ylabel="Time (Seconds)",
                 list1_label="Train Time",
-                list2_label="Predict Time")
+                list2_label="Predict Time",
+                dataset=dataset,
+                algo="knn",
+                type=hyperparameter)
 
             # test the default tree
-            calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset)
+            calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, algo="knn", type="default")
 
             # test the optimized tree
-            calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, metric="euclidean", neighbors=7)
+            if dataset == "titanic":
+                calculate_cross_val_score(
+                    X_train=X_train, y_train=y_train, dataset=dataset, metric="manhattan", neighbors=3, algo="knn", type="optimized")
+            else:
+                calculate_cross_val_score(
+                    X_train=X_train, y_train=y_train, dataset=dataset, metric="manhattan", neighbors=20, algo="knn", type="optimized")
 
 
 if __name__ == "__main__":

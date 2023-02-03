@@ -6,7 +6,7 @@ from time import perf_counter
 import matplotlib.pyplot as plt
 
 
-def plot_results(title, list1, list2, ylabel, xlabel, list1_label, list2_label):
+def plot_results(title, list1, list2, ylabel, xlabel, list1_label, list2_label, dataset, algo=None, type=None):
     x1, y1 = zip(*list1)
     x2, y2 = zip(*list2)
 
@@ -18,10 +18,12 @@ def plot_results(title, list1, list2, ylabel, xlabel, list1_label, list2_label):
     plt.ylabel(ylabel)
 
     plt.grid()
+    if algo is not None and type is not None:
+        plt.savefig(f"../images/{dataset}/{algo}/cross_validation_{type}.png")
     plt.show()
 
 
-def calculate_cross_val_score(X_train, y_train, dataset, max_depth=None, min_leaf=None):
+def calculate_cross_val_score(X_train, y_train, dataset, max_depth=None, min_leaf=None, algo=None, type=None):
     """
     :param X_train:
     :param y_train:
@@ -59,14 +61,15 @@ def calculate_cross_val_score(X_train, y_train, dataset, max_depth=None, min_lea
     plt.legend()
     plt.xlabel("Sample Size %")
     plt.ylabel("F1 Score")
-    plt.title(f"Learning Curve: {dataset_upper}")
+    plt.title(f"Learning Curve: {dataset_upper} ({type})")
     plt.grid()
+    if algo is not None and type is not None:
+        plt.savefig(f"../images/{dataset}/{algo}/cross_validation_{type}.png")
     plt.show()
 
-
 def main():
-    # datasets = ["titanic", "winequality-red"]
-    datasets = ["winequality-red"]
+    datasets = ["titanic", "winequality-red"]
+    # datasets = ["winequality-red"]
 
     for dataset in datasets:
         print(f"\nProcessing {dataset.upper()}")
@@ -134,7 +137,10 @@ def main():
                 xlabel=hyperparameter,
                 ylabel="F1 Score",
                 list1_label="Test Score",
-                list2_label="Train Score")
+                list2_label="Train Score",
+                dataset=dataset,
+                algo="dt",
+                type=hyperparameter)
 
             plot_results(
                 title=f"Decision Tree Time for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
@@ -143,13 +149,19 @@ def main():
                 xlabel=hyperparameter,
                 ylabel="Time (Seconds)",
                 list1_label="Train Time",
-                list2_label="Predict Time")
+                list2_label="Predict Time",
+                dataset=dataset,
+                algo="dt",
+                type=hyperparameter)
 
         # test the default tree
-        calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset)
+        calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, algo="dt", type="default")
 
         # test the optimized tree
-        calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, max_depth=10, min_leaf=1)
+        if dataset == "titanic":
+            calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, max_depth=6, min_leaf=5, algo="dt", type="optimized")
+        else:
+            calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, max_depth=3, min_leaf=1, algo="dt", type="optimized")
 
 
 if __name__ == "__main__":

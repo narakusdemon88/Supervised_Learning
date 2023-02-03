@@ -7,6 +7,52 @@ from time import perf_counter
 import matplotlib.pyplot as plt
 from DecisionTree import plot_results
 
+
+def calculate_cross_val_score(X_train, y_train, dataset, activation=None, hidden_layer_sizes=None, algo=None, type=None):
+    """
+    :param X_train:
+    :param y_train:
+    :param dataset:
+    :param activation:
+    :param hidden_layer_sizes:
+    """
+    if activation is None and hidden_layer_sizes is None:
+        # working with the default tree (no hyperparameter tuning)
+        clf = MLPClassifier()
+    elif activation is not None and hidden_layer_sizes is None:
+        # tweaking just activation
+        clf = MLPClassifier(activation=activation)
+    elif activation is None and hidden_layer_sizes is not None:
+        # tweaking just min leaf
+        clf = MLPClassifier(hidden_layer_sizes=hidden_layer_sizes)
+    else:
+        # tweaking both
+        clf = MLPClassifier(activation=activation, hidden_layer_sizes=hidden_layer_sizes)
+
+    training_sizes, training_scores, test_scores = learning_curve(
+        clf,
+        X_train,
+        y_train,
+        cv=10
+    )
+
+    # titanic --> Titanic
+    dataset_upper = dataset[0].upper() + dataset[1:]
+
+    training_sizes_percents = [(x/len(X_train))*100 for x in training_sizes]
+
+    plt.plot(training_sizes_percents, training_scores.mean(axis=1), label="Training Score")
+    plt.plot(training_sizes_percents, test_scores.mean(axis=1), label="Cross-Validation Score")
+    plt.legend()
+    plt.xlabel("Sample Size Percent")
+    plt.ylabel("F1 Score")
+    plt.title(f"Learning Curve: {dataset_upper} ({type})")
+    plt.grid()
+    if algo is not None and type is not None:
+        plt.savefig(f"../images/{dataset}/{algo}/cross_validation_{type}.png")
+    plt.show()
+
+
 def main():
     for dataset in ["winequality-red"]:
         print(f"\nProcessing {dataset.upper()}")
@@ -74,7 +120,10 @@ def main():
                     xlabel=hyperparameter,
                     ylabel="Time (Seconds",
                     list1_label="Train Time",
-                    list2_label="Predict Time"
+                    list2_label="Predict Time",
+                    dataset=dataset,
+                    algo="nn",
+                    type=hyperparameter
                 )
 
                 plt.bar(f1_scores.keys(), f1_scores.values())
@@ -110,6 +159,18 @@ def main():
                     f1_train.append(f1_score(y_train, y_train_pred, average="weighted"))
                     f1_test.append(f1_score(y_test, y_test_pred, average="weighted"))
 
+                # plot_results(
+                #     title=f"Neural Network F1 Score for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
+                #     list1=f1_test,
+                #     list2=f1_train,
+                #     xlabel=hyperparameter,
+                #     ylabel="F1 Score",
+                #     list1_label="Test Score",
+                #     list2_label="Train Score",
+                #     dataset=dataset,
+                #     algo="nn",
+                #     type=hyperparameter)
+
                 plot_results(
                     title=f"Neural Network Time for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
                     list1=train_time,
@@ -117,16 +178,19 @@ def main():
                     xlabel=hyperparameter,
                     ylabel="Time (Seconds)",
                     list1_label="Train Time",
-                    list2_label="Predict Time"
-                )
+                    list2_label="Predict Time",
+                    dataset=dataset,
+                    algo="nn",
+                    type=hyperparameter)
 
                 plt.plot(hidden_layers, f1_train, label='F1 Train Score')
                 plt.plot(hidden_layers, f1_test, label='F1 Test Score')
-                plt.title(f"{dataset} Hidden Layer F1 Scores")
+                plt.title(f"Neural Network F1 Score for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}")
                 plt.xlabel("# of Hidden Layers")
                 plt.ylabel("F1 Score")
                 plt.grid()
                 plt.legend()
+                plt.savefig(f"../images/{dataset}/nn/f1_hidden_layers.png")
                 plt.show()
 
             else:  # hidden layer nodes
@@ -155,6 +219,18 @@ def main():
                     f1_train.append(f1_score(y_train, y_train_pred, average="weighted"))
                     f1_test.append(f1_score(y_test, y_test_pred, average="weighted"))
 
+                # plot_results(
+                #     title=f"Neural Network F1 Score for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
+                #     list1=f1_test,
+                #     list2=f1_train,
+                #     xlabel=hyperparameter,
+                #     ylabel="F1 Score",
+                #     list1_label="Test Score",
+                #     list2_label="Train Score",
+                #     dataset=dataset,
+                #     algo="nn",
+                #     type=hyperparameter)
+
                 plot_results(
                     title=f"Neural Network Time for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
                     list1=train_time,
@@ -162,17 +238,30 @@ def main():
                     xlabel=hyperparameter,
                     ylabel="Time (Seconds)",
                     list1_label="Train Time",
-                    list2_label="Predict Time"
-                )
+                    list2_label="Predict Time",
+                    dataset=dataset,
+                    algo="nn",
+                    type=hyperparameter)
 
                 plt.plot(hidden_layer_nodes, f1_train, label='F1 Train Score')
                 plt.plot(hidden_layer_nodes, f1_test, label='F1 Test Score')
                 plt.xlabel("# of Hidden Layers Nodes")
                 plt.ylabel('F1 score')
-                plt.title(f"{dataset} Hidden Layer Nodes F1 Scores")
+                plt.title(f"Neural Network F1 Score for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}")
                 plt.grid()
                 plt.legend()
+                plt.savefig(f"../images/{dataset}/nn/f1_hidden_layers.png")
                 plt.show()
+
+        # test the default tree
+        calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, algo="nn", type="default")
+
+        if dataset == "titanic":
+            calculate_cross_val_score(
+                X_train=X_train, y_train=y_train, dataset=dataset, activation="identity", hidden_layer_sizes=(10, 50, 20), algo="nn", type="optimized")
+        else:
+            calculate_cross_val_score(
+                X_train=X_train, y_train=y_train, dataset=dataset, activation="logistic", hidden_layer_sizes=(50, 100, 20), algo="nn", type="optimized")
 
 
 if __name__ == "__main__":

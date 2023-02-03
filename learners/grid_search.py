@@ -10,6 +10,10 @@ import numpy as np
 
 
 df = pd.read_csv("../datasets/titanic.csv")
+# df = pd.read_csv("../datasets/winequality-red.csv")
+
+# X = df.drop("quality", axis=1)
+# y = df["quality"]
 X = df.drop("Survived", axis=1)
 y = df["Survived"]
 
@@ -35,7 +39,7 @@ nn_param_grid = {
 
 svm_param_grid = {
     "kernel": ["linear", "poly", "rbf", "sigmoid", "precomputed"],
-    "degree": [i for i in range(1, 11)]
+    "C": [i for i in range(1, 11)]
 }
 
 ada_param_grid = {
@@ -45,14 +49,13 @@ ada_param_grid = {
 
 
 classifiers = {
-    "Decision Tree": (DecisionTreeClassifier(), dt_param_grid),
-    "K Nearest Neighbors": (KNeighborsClassifier(), knn_param_grid),
-    "Neural Network": (MLPClassifier(), nn_param_grid),
+    # "Decision Tree": (DecisionTreeClassifier(), dt_param_grid),
+    # "K Nearest Neighbors": (KNeighborsClassifier(), knn_param_grid),
+    # "Neural Network": (MLPClassifier(), nn_param_grid),
     "Support Vector Machine": (SVC(), svm_param_grid),
-    "Adaboost": (AdaBoostClassifier(), ada_param_grid)
+    # "Adaboost": (AdaBoostClassifier(), ada_param_grid)
 }
 
-df = pd.DataFrame()
 
 for classifier in classifiers:
     print(classifier)
@@ -68,4 +71,3 @@ for classifier in classifiers:
     best = grid_search.best_estimator_
     # df = df.append(pd.DataFrame(best_params, index=[0]), ignore_index=True)
     print(best_params)
-    df.to_csv("Best_Params.csv", index=False)
