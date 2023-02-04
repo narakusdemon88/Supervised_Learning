@@ -1,217 +1,241 @@
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import train_test_split, learning_curve
-from sklearn.metrics import f1_score
 import pandas as pd
-from time import perf_counter
+from sklearn.model_selection import StratifiedKFold, learning_curve, train_test_split
 import numpy as np
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import f1_score
+from time import perf_counter
 import matplotlib.pyplot as plt
-from DecisionTree import plot_results
 
 
-def calculate_cross_val_score(X_train, y_train, dataset, metric=None, neighbors=None, algo=None, type=None):
-    """
-    :param X_train:
-    :param y_train:
-    :param dataset:
-    :param metric:
-    :param neighbors:
-    """
-    if metric is None and neighbors is None:
-        # working with the default tree (no hyperparameter tuning)
-        clf = KNeighborsClassifier()
-    elif metric is not None and neighbors is None:
-        # tweaking just metric
-        clf = KNeighborsClassifier(metric=metric)
-    elif metric is None and neighbors is not None:
-        # tweaking just min leaf
-        clf = KNeighborsClassifier(n_neighbors=neighbors)
-    else:
-        # tweaking both
-        clf = KNeighborsClassifier(metric=metric, n_neighbors=neighbors)
+def plot_results(title, list_1, list_2, y_label, x_label, list_1_label, list_2_label, dataset, algo, type):
+    x1, y1 = zip(*list_1)
+    x2, y2 = zip(*list_2)
 
-    training_sizes, training_scores, test_scores = learning_curve(
-        clf,
-        X_train,
-        y_train,
-        cv=10
-    )
+    plt.title(title)
+    plt.plot(x1, y1, label=list_1_label)
+    plt.plot(x2, y2, label=list_2_label)
 
-    # titanic --> Titanic
-    dataset_upper = dataset[0].upper() + dataset[1:]
-
-    training_sizes_percents = [(x/len(X_train))*100 for x in training_sizes]
-
-    plt.plot(training_sizes_percents, training_scores.mean(axis=1), label="Training Score")
-    plt.plot(training_sizes_percents, test_scores.mean(axis=1), label="Cross-Validation Score")
     plt.legend()
-    plt.xlabel("Sample Size Percent")
-    plt.ylabel("F1 Score")
-    plt.title(f"Learning Curve: {dataset_upper} ({type})")
+    plt.xlabel(xlabel=x_label)
+    plt.ylabel(ylabel=y_label)
     plt.grid()
-    if algo is not None and type is not None:
-        plt.savefig(f"../images/{dataset}/{algo}/cross_validation_{type}.png")
+    plt.savefig(f"../images/{dataset}/{algo}/{title}.png")
     plt.show()
 
 
 def main():
-
     for dataset in ["titanic", "winequality-red"]:
-        print(f"\nProcessing {dataset.upper()}")
-
-        df = pd.read_csv(f"../datasets/{dataset}.csv")
+        print(f"Processing {dataset}")
+        data = pd.read_csv(f"../datasets/{dataset}.csv")
 
         if dataset == "titanic":
             predict_col = "Survived"
         else:
             predict_col = "quality"
 
-        X = df.drop([predict_col], axis=1)
-        y = df[predict_col]
+        X = data.drop(columns=[predict_col])
+        y = data[predict_col]
 
-        # Preprocess the data
         X = pd.get_dummies(X)
         X.fillna(X.mean(), inplace=True)
+        k_folds = StratifiedKFold(n_splits=5)
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
-            random_state=0,
-            test_size=0.2,
-            shuffle=True)
-
-        # for hyperparameter in ["distance", "k"]:
-        for hyperparameter in ["k"]:
-            print(f"Testing {hyperparameter}")
-
-            train_time = []
-            predict_time = []
-
-            f1_test_scores = []
-            f1_train_scores = []
+        for hyperparameter in ["distance", "k"]:
+            f1_scores = []
+            f1_scores_train = []
+            fit_times = []
+            pred_times = []
 
             if hyperparameter == "distance":
+                for i in ["euclidean", "manhattan", "chebyshev", "minkowski"]:
+                    knn = KNeighborsClassifier(metric=i)
 
-                distance_metrics = ["euclidean", "manhattan", "chebyshev", "minkowski"]
+                    fold_f1_scores_test = []
+                    fold_f1_scores_train = []
+                    fold_fit_times = []
+                    fold_pred_times = []
 
-                distance_metrics_dict = {}
+                    k_fold_split = k_folds.split(X, y)
 
-                for metric in distance_metrics:
-                    knn = KNeighborsClassifier(metric=metric)
+                    for train_i, test_i in k_fold_split:
+                        X_train = X.iloc[train_i]
+                        X_test = X.iloc[test_i]
+                        y_train = y.iloc[train_i]
+                        y_test = y.iloc[test_i]
 
-                    # time the fit and prediction times
-                    t1 = perf_counter()
-                    knn.fit(X_train, y_train)
-                    t2 = perf_counter()
-                    y_pred_test = knn.predict(X_test)
-                    t3 = perf_counter()
+                        t1 = perf_counter()
+                        knn.fit(X_train, y_train)
+                        t2 = perf_counter()
 
-                    # store times to list
-                    train_time.append((metric, t2 - t1))
-                    predict_time.append((metric, t3 - t2))
+                        y_pred = knn.predict(X_test)
+                        t3 = perf_counter()
 
-                    # y_pred_test = clf.predict(X_test)
-                    y_pred_train = knn.predict(X_train)
+                        y_pred_train = knn.predict(X_train)
 
-                    f1_test = f1_score(y_test, y_pred_test, average="weighted")
-                    f1_train = f1_score(y_train, y_pred_train, average="weighted")
-                    f1_test_scores.append((metric, f1_test))
-                    f1_train_scores.append((metric, f1_train))
+                        fit_time = t2 - t1
+                        pred_time = t3 - t2
 
-                    print(f"{hyperparameter}: {metric}, F1_Score: {f1_test, f1_train}")
-                    distance_metrics_dict[metric] = (f1_test, f1_train)
+                        fold_f1_score_test = f1_score(y_test, y_pred, average="weighted")
+                        fold_f1_score_train = f1_score(y_train, y_pred_train, average="weighted")
 
-                keys = list(distance_metrics_dict.keys())
-                values = [value for value in distance_metrics_dict.values()]
+                        # append times to lists
+                        fold_f1_scores_test.append(fold_f1_score_test)
+                        fold_f1_scores_train.append(fold_f1_score_train)
+                        fold_fit_times.append(fit_time)
+                        fold_pred_times.append(pred_time)
 
-                # Unpack the tuple values
-                x1 = [val[0] for val in values]
-                x2 = [val[1] for val in values]
+                    average_f1_score = sum(fold_f1_scores_test) / len(fold_f1_scores_test)
+                    average_f1_score_train = sum(fold_f1_scores_train) / len(fold_f1_scores_train)
+                    average_fit_time = sum(fold_fit_times) / len(fold_fit_times)
+                    average_pred_time = sum(fold_pred_times) / len(fold_pred_times)
 
-                N = 4
+                    f1_scores.append((i, average_f1_score))
+                    f1_scores_train.append((i, average_f1_score_train))
 
-                ind = np.arange(N)  # the x locations for the groups
-                width = 0.35  # the width of the bars
+                    fit_times.append((i, average_fit_time))
+                    pred_times.append((i, average_pred_time))
 
-                fig = plt.figure()
-                ax = fig.add_subplot(111)
-                f1_test = ax.bar(ind, x1, width)
+                    print(f"{i} F1:{average_f1_score}, Fit:{average_fit_time}, Pred:{average_pred_time}")
+                print(f"f1 scores for each {hyperparameter} value: ", f1_scores)
 
-                f1_train = ax.bar(ind + width, x2, width)
-
-                # add some
-                ax.set_ylabel('F1 Scores')
-                ax.set_xlabel("Distance Metrics")
-                ax.set_title("F1 Scores for KNN")
-                ax.set_xticks(ind + width / 2)
-                ax.set_xticklabels(keys)
-
-                ax.legend((f1_test[0], f1_train[0]), ("F1 Test Score", "F1 Train Score"))
-
-                plt.savefig(f"../images/{dataset}/knn/f1_scores_knn.png")
-
-                plt.show()
-                # https://stackoverflow.com/questions/10369681/how-to-plot-bar-graphs-with-same-x-coordinates-side-by-side-dodged
-            # TODO: plot bar graph for different distance metrics
+                # PLOT F1 SCORES
+                plot_results(
+                    title=f"KNN F1 Score for {hyperparameter} on {dataset}",
+                    list_1=f1_scores,
+                    list_2=f1_scores_train,
+                    x_label=hyperparameter,
+                    y_label="F1 Score",
+                    list_1_label="Test Score",
+                    list_2_label="Train Score",
+                    dataset=dataset,
+                    algo="knn",
+                    type=f"{hyperparameter}_f1")
+                # PLOT TIMES
+                plot_results(
+                    title=f"KNN Times for {hyperparameter} on {dataset}",
+                    list_1=fit_times,
+                    list_2=pred_times,
+                    x_label=hyperparameter,
+                    y_label="Time (Seconds)",
+                    list_1_label="Train Times",
+                    list_2_label="Predict Times",
+                    dataset=dataset,
+                    algo="knn",
+                    type=f"{hyperparameter}_times")
 
             else:
-                # Iterate through k
-                for k in [i for i in range(1, 21, 1)]:  # iterate through the k's
-                    knn = KNeighborsClassifier(n_neighbors=k)
+                # hyperparameter = k
+                for i in [i for i in range(1, 21, 1)]:
+                    knn = KNeighborsClassifier(n_neighbors=i)
 
-                    t1 = perf_counter()
-                    knn.fit(X_train, y_train)
-                    t2 = perf_counter()
-                    y_pred_test = knn.predict(X_test)
-                    t3 = perf_counter()
+                    fold_f1_scores_test = []
+                    fold_f1_scores_train = []
+                    fold_fit_times = []
+                    fold_pred_times = []
 
-                    # store times to list
-                    train_time.append((k, t2 - t1))
-                    predict_time.append((k, t3 - t2))
+                    k_fold_split = k_folds.split(X, y)
 
-                    # y_pred_test = clf.predict(X_test)
-                    y_pred_train = knn.predict(X_train)
+                    for train_i, test_i in k_fold_split:
+                        X_train = X.iloc[train_i]
+                        X_test = X.iloc[test_i]
+                        y_train = y.iloc[train_i]
+                        y_test = y.iloc[test_i]
 
-                    f1_test = f1_score(y_test, y_pred_test, average="weighted")
-                    f1_train = f1_score(y_train, y_pred_train, average="weighted")
-                    f1_test_scores.append((k, f1_test))
-                    f1_train_scores.append((k, f1_train))
+                        t1 = perf_counter()
+                        knn.fit(X_train, y_train)
+                        t2 = perf_counter()
 
-                    print(f"{hyperparameter}: {k}, F1_Score: {f1_test, f1_train}")
+                        y_pred = knn.predict(X_test)
+                        t3 = perf_counter()
 
-            plot_results(
-                title=f"KNN F1 Score for {hyperparameter[0].upper() + hyperparameter[1:]}",
-                list1=f1_test_scores,
-                list2=f1_train_scores,
-                xlabel=hyperparameter,
-                ylabel="F1 Score",
-                list1_label="Test Score",
-                list2_label="Train Score",
-                dataset=dataset,
-                algo="knn",
-                type=hyperparameter)
+                        y_pred_train = knn.predict(X_train)
 
-            plot_results(
-                title=f"KNN Time for {hyperparameter[0].upper() + hyperparameter[1:]}",
-                list1=train_time,
-                list2=predict_time,
-                xlabel=hyperparameter,
-                ylabel="Time (Seconds)",
-                list1_label="Train Time",
-                list2_label="Predict Time",
-                dataset=dataset,
-                algo="knn",
-                type=hyperparameter)
+                        fit_time = t2 - t1
+                        pred_time = t3 - t2
 
-            # test the default tree
-            calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, algo="knn", type="default")
+                        fold_f1_score_test = f1_score(y_test, y_pred, average="weighted")
+                        fold_f1_score_train = f1_score(y_train, y_pred_train, average="weighted")
 
-            # test the optimized tree
-            if dataset == "titanic":
-                calculate_cross_val_score(
-                    X_train=X_train, y_train=y_train, dataset=dataset, metric="manhattan", neighbors=3, algo="knn", type="optimized")
-            else:
-                calculate_cross_val_score(
-                    X_train=X_train, y_train=y_train, dataset=dataset, metric="manhattan", neighbors=20, algo="knn", type="optimized")
+                        # append times to lists
+                        fold_f1_scores_test.append(fold_f1_score_test)
+                        fold_f1_scores_train.append(fold_f1_score_train)
+                        fold_fit_times.append(fit_time)
+                        fold_pred_times.append(pred_time)
+
+                    average_f1_score = sum(fold_f1_scores_test) / len(fold_f1_scores_test)
+                    average_f1_score_train = sum(fold_f1_scores_train) / len(fold_f1_scores_train)
+                    average_fit_time = sum(fold_fit_times) / len(fold_fit_times)
+                    average_pred_time = sum(fold_pred_times) / len(fold_pred_times)
+
+                    f1_scores.append((i, average_f1_score))
+                    f1_scores_train.append((i, average_f1_score_train))
+
+                    fit_times.append((i, average_fit_time))
+                    pred_times.append((i, average_pred_time))
+
+                    print(f"{i} F1:{average_f1_score}, Fit:{average_fit_time}, Pred:{average_pred_time}")
+                print(f"f1 scores for each {hyperparameter} value: ", f1_scores)
+
+                # PLOT F1 SCORES
+                plot_results(
+                    title=f"KNN F1 Score for {hyperparameter} on {dataset}",
+                    list_1=f1_scores,
+                    list_2=f1_scores_train,
+                    x_label=hyperparameter,
+                    y_label="F1 Score",
+                    list_1_label="Test Score",
+                    list_2_label="Train Score",
+                    dataset=dataset,
+                    algo="knn",
+                    type=f"{hyperparameter}_f1")
+                # PLOT TIMES
+                plot_results(
+                    title=f"KNN Times for {hyperparameter} on {dataset}",
+                    list_1=fit_times,
+                    list_2=pred_times,
+                    x_label=hyperparameter,
+                    y_label="Time (Seconds)",
+                    list_1_label="Train Times",
+                    list_2_label="Predict Times",
+                    dataset=dataset,
+                    algo="knn",
+                    type=f"{hyperparameter}_times")
+
+                # PLOT DEFAULT TREE
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X,
+                    y,
+                    random_state=0,
+                    test_size=0.2,
+                    shuffle=True
+                )
+                for tree in ["default", "optimized"]:
+                    if tree == "default":
+                        knn = KNeighborsClassifier()
+                    else:
+                        if dataset == "titanic":
+                            knn = KNeighborsClassifier(metric="manhattan", n_neighbors=3)
+                        else:
+                            knn = KNeighborsClassifier(metric="manhattan", n_neighbors=20)
+
+                    train_sizes, train_scores, test_scores = learning_curve(
+                        estimator=knn,
+                        X=X_train,
+                        y=y_train,
+                        cv=10)
+
+                    train_scores_average = np.mean(train_scores, axis=1)
+                    test_scores_average = np.mean(test_scores, axis=1)
+
+                    plt.plot(train_sizes, train_scores_average, label="Training Score")
+                    plt.plot(train_sizes, test_scores_average, label="CV Score")
+                    plt.title(f"Learning Curve for {tree} on {dataset}")
+                    plt.xlabel("# of Samples")
+                    plt.ylabel("Performance Score")
+                    plt.legend()
+                    plt.grid()
+                    plt.savefig(f"../images/{dataset}/knn/Learning Curve for {tree} on {dataset}.png")
+                    plt.show()
 
 
 if __name__ == "__main__":
