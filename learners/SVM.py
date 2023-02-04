@@ -1,215 +1,254 @@
-import time
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
 import pandas as pd
-from sklearn.model_selection import train_test_split, learning_curve
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import StratifiedKFold, learning_curve, train_test_split
+import numpy as np
+from sklearn.svm import SVC
 from sklearn.metrics import f1_score
 from time import perf_counter
 import matplotlib.pyplot as plt
-from DecisionTree import plot_results
 
 
-def calculate_cross_val_score(X_train, y_train, dataset, kernel=None, C=None, algo=None, type=None):
-    """
-    :param X_train:
-    :param y_train:
-    :param dataset:
-    :param kernel:
-    :param C:
-    """
-    if kernel is None and C is None:
-        # working with the default tree (no hyperparameter tuning)
-        clf = SVC(cache_size=7_000)
-    elif kernel is not None and C is None:
-        # tweaking just max depth
-        clf = SVC(kernel=kernel, cache_size=7_000)
-    elif kernel is None and C is not None:
-        # tweaking just min leaf
-        clf = SVC(C=C, cache_size=7_000)
-    else:
-        # tweaking both
-        clf = SVC(kernel=kernel, C=C, cache_size=7_000)
+def plot_results(title, list_1, list_2, y_label, x_label, list_1_label, list_2_label, dataset, algo, type):
+    x1, y1 = zip(*list_1)
+    x2, y2 = zip(*list_2)
 
-    training_sizes, training_scores, test_scores = learning_curve(
-        clf,
-        X_train,
-        y_train,
-        cv=10
-    )
+    plt.title(title)
+    plt.plot(x1, y1, label=list_1_label)
+    plt.plot(x2, y2, label=list_2_label)
 
-    # titanic --> Titanic
-    dataset_upper = dataset[0].upper() + dataset[1:]
-
-    training_sizes_percents = [(i/len(X_train))*100 for i in training_sizes]
-
-    plt.plot(training_sizes_percents, training_scores.mean(axis=1), label="Training Score")
-    plt.plot(training_sizes_percents, test_scores.mean(axis=1), label="Cross-Validation Score")
     plt.legend()
-    plt.xlabel("Sample Size %")
-    plt.ylabel("F1 Score")
-    plt.title(f"Learning Curve: {dataset_upper}")
+    plt.xlabel(xlabel=x_label)
+    plt.ylabel(ylabel=y_label)
     plt.grid()
-    plt.savefig(f"../images/{dataset}/{algo}/cross_validation_{type}.png")
+    plt.savefig(f"../images/{dataset}/{algo}/{title}.png")
     plt.show()
 
 
 def main():
-    for dataset in ["winequality-red"]:
-    # for dataset in ["titanic"]:
+    for dataset in ["titanic", "winequality-red"]:
         print(f"Processing {dataset}")
-
-        df = pd.read_csv(f"../datasets/{dataset}.csv")
+        data = pd.read_csv(f"../datasets/{dataset}.csv")
 
         if dataset == "titanic":
             predict_col = "Survived"
         else:
             predict_col = "quality"
 
-        X = df.drop([predict_col], axis=1)
-        y = df[predict_col]
+        X = data.drop(columns=[predict_col])
+        y = data[predict_col]
 
         X = pd.get_dummies(X)
         X.fillna(X.mean(), inplace=True)
+        k_folds = StratifiedKFold(n_splits=5)
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
-            random_state=0,
-            test_size=0.2,
-            shuffle=True)
+        for hyperparameter in ["kernel", "C"]:
+            f1_scores = []
+            f1_scores_train = []
+            fit_times = []
+            pred_times = []
 
-        scaler = StandardScaler()
-        X_train = scaler.fit_transform(X_train)
-        X_test = scaler.transform(X_test)
-
-        # hyperparameters = ["kernel", "C"]
-        for hyperparameter in ["C"]:
             if hyperparameter == "kernel":
-                kernels = [
-                    "linear",
-                    "poly",
-                    "rbf",
-                    "sigmoid"
-                ]
+                for i in ["linear", "poly", "rbf", "sigmoid"]:
+                    svm = SVC(kernel=i, cache_size=7_000)
 
-                train_time = []
-                predict_time = []
+                    fold_f1_scores_test = []
+                    fold_f1_scores_train = []
+                    fold_fit_times = []
+                    fold_pred_times = []
 
-                f1_test_scores = []
-                f1_train_scores = []
+                    k_fold_split = k_folds.split(X, y)
 
-                for kernel in kernels:
-                    clf = SVC(kernel=kernel, cache_size=7_000)
+                    for train_i, test_i in k_fold_split:
+                        X_train = X.iloc[train_i]
+                        X_test = X.iloc[test_i]
+                        y_train = y.iloc[train_i]
+                        y_test = y.iloc[test_i]
 
-                    t1 = time.perf_counter()
-                    clf.fit(X_train, y_train)
-                    t2 = time.perf_counter()
-                    y_pred_test = clf.predict(X_test)
-                    t3 = perf_counter()
+                        scaler = StandardScaler()
+                        X_train = scaler.fit_transform(X_train)
+                        X_test = scaler.transform(X_test)
 
-                    train_time.append((kernel, t2 - t1))
-                    predict_time.append((kernel, t3 - t2))
+                        t1 = perf_counter()
+                        svm.fit(X_train, y_train)
+                        t2 = perf_counter()
 
-                    # y_pred_test = clf.predict(X_test)
-                    y_pred_train = clf.predict(X_train)
+                        y_pred = svm.predict(X_test)
+                        t3 = perf_counter()
 
-                    f1_test = f1_score(y_test, y_pred_test, average="weighted")
-                    f1_train = f1_score(y_train, y_pred_train, average="weighted")
-                    f1_test_scores.append((kernel, f1_test))
-                    f1_train_scores.append((kernel, f1_train))
+                        y_pred_train = svm.predict(X_train)
 
-                    print(f"{hyperparameter}: {kernel}, F1_Score: {f1_test, f1_train}")
+                        fit_time = t2 - t1
+                        pred_time = t3 - t2
 
+                        fold_f1_score_test = f1_score(y_test, y_pred, average="weighted")
+                        fold_f1_score_train = f1_score(y_train, y_pred_train, average="weighted")
+
+                        # append times to lists
+                        fold_f1_scores_test.append(fold_f1_score_test)
+                        fold_f1_scores_train.append(fold_f1_score_train)
+                        fold_fit_times.append(fit_time)
+                        fold_pred_times.append(pred_time)
+
+                    average_f1_score = sum(fold_f1_scores_test) / len(fold_f1_scores_test)
+                    average_f1_score_train = sum(fold_f1_scores_train) / len(fold_f1_scores_train)
+                    average_fit_time = sum(fold_fit_times) / len(fold_fit_times)
+                    average_pred_time = sum(fold_pred_times) / len(fold_pred_times)
+
+                    f1_scores.append((i, average_f1_score))
+                    f1_scores_train.append((i, average_f1_score_train))
+
+                    fit_times.append((i, average_fit_time))
+                    pred_times.append((i, average_pred_time))
+
+                    print(f"{i} F1:{average_f1_score}, Fit:{average_fit_time}, Pred:{average_pred_time}")
+                print(f"f1 scores for each {hyperparameter} value: ", f1_scores)
+
+                # PLOT F1 SCORES
                 plot_results(
-                    title=f"SVM F1 Score for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
-                    list1=f1_test_scores,
-                    list2=f1_train_scores,
-                    xlabel=hyperparameter,
-                    ylabel="F1 Score",
-                    list1_label="Test Score",
-                    list2_label="Train Score",
+                    title=f"SVM F1 Score for {hyperparameter} on {dataset}",
+                    list_1=f1_scores,
+                    list_2=f1_scores_train,
+                    x_label=hyperparameter,
+                    y_label="F1 Score",
+                    list_1_label="Test Score",
+                    list_2_label="Train Score",
                     dataset=dataset,
                     algo="svm",
-                    type=hyperparameter)
-
+                    type=f"{hyperparameter}_f1")
+                # PLOT TIMES
                 plot_results(
-                    title=f"SVM Time for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
-                    list1=train_time,
-                    list2=predict_time,
-                    xlabel=hyperparameter,
-                    ylabel="Time (Seconds)",
-                    list1_label="Train Time",
-                    list2_label="Predict Time",
+                    title=f"SVM Times for {hyperparameter} on {dataset}",
+                    list_1=fit_times,
+                    list_2=pred_times,
+                    x_label=hyperparameter,
+                    y_label="Time (Seconds)",
+                    list_1_label="Train Times",
+                    list_2_label="Predict Times",
                     dataset=dataset,
                     algo="svm",
-                    type=hyperparameter)
+                    type=f"{hyperparameter}_times")
 
             else:
-                # hyperparameter is "C"
-                train_time = []
-                predict_time = []
+                # hyperparameter = C
+                for i in [i for i in range(1, 201, 10)]:
+                    svm = SVC(C=i, cache_size=7_000)
 
-                f1_test_scores = []
-                f1_train_scores = []
+                    fold_f1_scores_test = []
+                    fold_f1_scores_train = []
+                    fold_fit_times = []
+                    fold_pred_times = []
 
-                hyperparameter = "C"
+                    k_fold_split = k_folds.split(X, y)
 
-                # for C in [i for i in range(1, 11)]:
-                for C in [i for i in range(1, 201, 10)]:
-                    clf = SVC(C=C, cache_size=7_000)
+                    for train_i, test_i in k_fold_split:
+                        X_train = X.iloc[train_i]
+                        X_test = X.iloc[test_i]
+                        y_train = y.iloc[train_i]
+                        y_test = y.iloc[test_i]
 
-                    t1 = time.perf_counter()
-                    clf.fit(X_train, y_train)
-                    t2 = time.perf_counter()
-                    y_pred_test = clf.predict(X_test)
-                    t3 = perf_counter()
+                        scaler = StandardScaler()
+                        X_train = scaler.fit_transform(X_train)
+                        X_test = scaler.transform(X_test)
 
-                    train_time.append((C, t2 - t1))
-                    predict_time.append((C, t3 - t2))
+                        t1 = perf_counter()
+                        svm.fit(X_train, y_train)
+                        t2 = perf_counter()
 
-                    # y_pred_test = clf.predict(X_test)
-                    y_pred_train = clf.predict(X_train)
+                        y_pred = svm.predict(X_test)
+                        t3 = perf_counter()
 
-                    f1_test = f1_score(y_test, y_pred_test, average="weighted")
-                    f1_train = f1_score(y_train, y_pred_train, average="weighted")
-                    f1_test_scores.append((C, f1_test))
-                    f1_train_scores.append((C, f1_train))
+                        y_pred_train = svm.predict(X_train)
 
-                    print(f"{hyperparameter}: {C}, F1_Score: {f1_test, f1_train}")
+                        fit_time = t2 - t1
+                        pred_time = t3 - t2
 
+                        fold_f1_score_test = f1_score(y_test, y_pred, average="weighted")
+                        fold_f1_score_train = f1_score(y_train, y_pred_train, average="weighted")
+
+                        # append times to lists
+                        fold_f1_scores_test.append(fold_f1_score_test)
+                        fold_f1_scores_train.append(fold_f1_score_train)
+                        fold_fit_times.append(fit_time)
+                        fold_pred_times.append(pred_time)
+
+                    average_f1_score = sum(fold_f1_scores_test) / len(fold_f1_scores_test)
+                    average_f1_score_train = sum(fold_f1_scores_train) / len(fold_f1_scores_train)
+                    average_fit_time = sum(fold_fit_times) / len(fold_fit_times)
+                    average_pred_time = sum(fold_pred_times) / len(fold_pred_times)
+
+                    f1_scores.append((i, average_f1_score))
+                    f1_scores_train.append((i, average_f1_score_train))
+
+                    fit_times.append((i, average_fit_time))
+                    pred_times.append((i, average_pred_time))
+
+                    print(f"{i} F1:{average_f1_score}, Fit:{average_fit_time}, Pred:{average_pred_time}")
+                print(f"f1 scores for each {hyperparameter} value: ", f1_scores)
+
+                # PLOT F1 SCORES
                 plot_results(
-                    title=f"SVM F1 Score for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
-                    list1=f1_test_scores,
-                    list2=f1_train_scores,
-                    xlabel=hyperparameter,
-                    ylabel="F1 Score",
-                    list1_label="Test Score",
-                    list2_label="Train Score",
+                    title=f"SVM F1 Score for {hyperparameter} on {dataset}",
+                    list_1=f1_scores,
+                    list_2=f1_scores_train,
+                    x_label=hyperparameter,
+                    y_label="F1 Score",
+                    list_1_label="Test Score",
+                    list_2_label="Train Score",
                     dataset=dataset,
                     algo="svm",
-                    type=hyperparameter)
-
+                    type=f"{hyperparameter}_f1")
+                # PLOT TIMES
                 plot_results(
-                    title=f"SVM Time for {hyperparameter[0].upper() + hyperparameter[1:]} on {dataset}",
-                    list1=train_time,
-                    list2=predict_time,
-                    xlabel=hyperparameter,
-                    ylabel="Time (Seconds)",
-                    list1_label="Train Time",
-                    list2_label="Predict Time",
+                    title=f"SVM Times for {hyperparameter} on {dataset}",
+                    list_1=fit_times,
+                    list_2=pred_times,
+                    x_label=hyperparameter,
+                    y_label="Time (Seconds)",
+                    list_1_label="Train Times",
+                    list_2_label="Predict Times",
                     dataset=dataset,
                     algo="svm",
-                    type=hyperparameter)
+                    type=f"{hyperparameter}_times")
 
-                # test the default tree
-            calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, algo="svm", type="default")
+                # PLOT DEFAULT TREE
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X,
+                    y,
+                    random_state=0,
+                    test_size=0.2,
+                    shuffle=True
+                )
+                # Scale the data down so it runs
+                scaler = StandardScaler()
+                X_train = scaler.fit_transform(X_train)
 
-        # test the optimized tree
-        if dataset == "titanic":
-            # TODO: double check the right kernel
-            calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, kernel="linear", C=177, algo="svm", type="optimized")
-        else:
-            calculate_cross_val_score(X_train=X_train, y_train=y_train, dataset=dataset, kernel="linear", C=185, algo="svm", type="optimized")
+                for tree in ["default", "optimized"]:
+                    if tree == "default":
+                        svm = SVC(cache_size=7_000)
+                    else:
+                        if dataset == "titanic":
+                            svm = SVC(kernel="linear", C=177, cache_size=7_000)
+                        else:
+                            svm = SVC(kernel="linear", C=185, cache_size=7_000)
+
+                    train_sizes, train_scores, test_scores = learning_curve(
+                        estimator=svm,
+                        X=X_train,
+                        y=y_train,
+                        cv=10)
+
+                    train_scores_average = np.mean(train_scores, axis=1)
+                    test_scores_average = np.mean(test_scores, axis=1)
+
+                    plt.plot(train_sizes, train_scores_average, label="Training Score")
+                    plt.plot(train_sizes, test_scores_average, label="CV Score")
+                    plt.title(f"Learning Curve for {tree} on {dataset}")
+                    plt.xlabel("# of Samples")
+                    plt.ylabel("Performance Score")
+                    plt.legend()
+                    plt.grid()
+                    plt.savefig(f"../images/{dataset}/svm/Learning Curve for {tree} on {dataset}.png")
+                    plt.show()
 
 
 if __name__ == "__main__":
