@@ -64,18 +64,14 @@ def main():
         else:
             predict_col = "quality"
 
-        # Split the data into features and target
         X = data.drop(predict_col, axis=1)
         y = data[predict_col]
 
-        # Pre-process the data
         X = pd.get_dummies(X)
         X.fillna(X.mean(), inplace=True)
 
-        # Split the data into training and test sets
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-        # Scale the data to improve the performance of the neural network
         scaler = StandardScaler()
         X_train = scaler.fit_transform(X_train)
         X_test = scaler.transform(X_test)

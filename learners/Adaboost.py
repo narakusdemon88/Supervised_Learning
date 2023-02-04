@@ -94,7 +94,7 @@ def main():
 
                 for weak_learner_number in [i for i in range(1, 101, 1)]:
 
-                    clf = AdaBoostClassifier(estimator=DecisionTreeClassifier(), n_estimators=weak_learner_number)
+                    clf = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), n_estimators=weak_learner_number)
                     t1 = perf_counter()
                     clf.fit(X_train, y_train)
                     t2 = perf_counter()
@@ -147,7 +147,7 @@ def main():
                 f1_train_scores = []
 
                 for rate in np.linspace(0.000001, 1, 100):
-                    clf = AdaBoostClassifier(estimator=DecisionTreeClassifier(), learning_rate=rate)
+                    clf = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), learning_rate=rate)
                     t1 = perf_counter()
                     clf.fit(X_train, y_train)
                     t2 = perf_counter()

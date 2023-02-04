@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split, learning_curve
+from sklearn.model_selection import train_test_split, learning_curve, StratifiedKFold
 from sklearn.metrics import f1_score
 from sklearn.tree import DecisionTreeClassifier
 from time import perf_counter
@@ -86,6 +86,9 @@ def main():
         X = pd.get_dummies(X)
         X.fillna(X.mean(), inplace=True)
 
+        splits = 10
+        k_folds = StratifiedKFold(n_splits=splits)
+
         X_train, X_test, y_train, y_test = train_test_split(
             X,
             y,
@@ -110,7 +113,27 @@ def main():
                 else:
                     clf = DecisionTreeClassifier(min_samples_leaf=i)
 
-                # time the fit and prediction times
+                f1_test_fold_scores = []
+                f1_train_fold_scores = []
+
+                test_fold_times = []
+                train_fold_times = []
+
+                for train_i, test_i in k_folds.split(X, y):
+                    X_train = X.iloc[train_i]
+                    X_test = X.iloc[test_i]
+
+                    y_train = y.iloc[train_i]
+                    y_test = y.iloc[test_i]
+
+                    # time the fit and predict time
+                    time1 = perf_counter()
+                    clf.fit(X_train, y_train)
+                    time2 = perf_counter()
+                    y_pred_test = clf.predict(X_test)
+                    time3 = perf_counter()
+
+
                 t1 = perf_counter()
                 clf.fit(X_train, y_train)
                 t2 = perf_counter()
