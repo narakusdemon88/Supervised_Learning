@@ -126,7 +126,7 @@ def main():
                     type=f"{hyperparameter}_times")
 
             else:
-                # hyperparameter = C
+                # hyperparameter = learning rate
                 for i in np.linspace(0.000001, 1, 100):
                     boost = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), learning_rate=i)
 
@@ -203,45 +203,46 @@ def main():
                     algo="boost",
                     type=f"{hyperparameter}_times")
 
-                # PLOT DEFAULT TREE
-                X_train, X_test, y_train, y_test = train_test_split(
-                    X,
-                    y,
-                    random_state=0,
-                    test_size=0.2,
-                    shuffle=True
-                )
-                # Scale the data down so it runs
-                scaler = StandardScaler()
-                X_train = scaler.fit_transform(X_train)
+        # PLOT DEFAULT TREE
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            random_state=0,
+            test_size=0.2,
+            shuffle=True
+        )
+        # Scale the data down so it runs
+        scaler = StandardScaler()
+        X_train = scaler.fit_transform(X_train)
 
-                for tree in ["default", "optimized"]:
-                    if tree == "default":
-                        boost = AdaBoostClassifier()
-                    else:
-                        if dataset == "titanic":
-                            boost = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), learning_rate=0.000001, n_estimators=1)
-                        else:
-                            boost = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), learning_rate=0.0094, n_estimators=46)
+        for tree in ["default", "optimized"]:
+            if tree == "default":
+                boost = AdaBoostClassifier()
+            else:
+                if dataset == "titanic":
+                    boost = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), learning_rate=0.000001, n_estimators=1)
+                else:
+                    boost = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), learning_rate=0.0094, n_estimators=46)
 
-                    train_sizes, train_scores, test_scores = learning_curve(
-                        estimator=boost,
-                        X=X_train,
-                        y=y_train,
-                        cv=10)
+            train_sizes, train_scores, test_scores = learning_curve(
+                estimator=boost,
+                X=X_train,
+                y=y_train,
+                cv=10,
+                scoring="f1_weighted")
 
-                    train_scores_average = np.mean(train_scores, axis=1)
-                    test_scores_average = np.mean(test_scores, axis=1)
+            train_scores_average = np.mean(train_scores, axis=1)
+            test_scores_average = np.mean(test_scores, axis=1)
 
-                    plt.plot(train_sizes, train_scores_average, label="Training Score")
-                    plt.plot(train_sizes, test_scores_average, label="CV Score")
-                    plt.title(f"Learning Curve for {tree} on {dataset}")
-                    plt.xlabel("# of Samples")
-                    plt.ylabel("Performance Score")
-                    plt.legend()
-                    plt.grid()
-                    plt.savefig(f"../images/{dataset}/boost/Learning Curve for {tree} on {dataset}.png")
-                    plt.show()
+            plt.plot(train_sizes, train_scores_average, label="Training Score")
+            plt.plot(train_sizes, test_scores_average, label="CV Score")
+            plt.title(f"Learning Curve for {tree} on {dataset}")
+            plt.xlabel("# of Samples")
+            plt.ylabel("Performance (F1) Score")
+            plt.legend()
+            plt.grid()
+            plt.savefig(f"../images/{dataset}/boost/Learning Curve for {tree} on {dataset}.png")
+            plt.show()
 
 
 if __name__ == "__main__":
