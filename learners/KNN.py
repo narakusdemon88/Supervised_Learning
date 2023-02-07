@@ -222,7 +222,8 @@ def main():
                         estimator=knn,
                         X=X_train,
                         y=y_train,
-                        cv=10)
+                        cv=10,
+                        scoring="f1_weighted")
 
                     train_scores_average = np.mean(train_scores, axis=1)
                     test_scores_average = np.mean(test_scores, axis=1)
@@ -231,7 +232,7 @@ def main():
                     plt.plot(train_sizes, test_scores_average, label="CV Score")
                     plt.title(f"Learning Curve for {tree} on {dataset}")
                     plt.xlabel("# of Samples")
-                    plt.ylabel("Performance Score")
+                    plt.ylabel("Performance (F1) Score")
                     plt.legend()
                     plt.grid()
                     plt.savefig(f"../images/{dataset}/knn/Learning Curve for {tree} on {dataset}.png")
