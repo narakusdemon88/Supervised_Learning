@@ -2,8 +2,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold, learning_curve, train_test_split
 import numpy as np
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import AdaBoostClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import f1_score
 from time import perf_counter
 import matplotlib.pyplot as plt
@@ -42,15 +41,15 @@ def main():
         X.fillna(X.mean(), inplace=True)
         k_folds = StratifiedKFold(n_splits=5)
 
-        for hyperparameter in ["weak_learners", "learning_rate"]:
+        for hyperparameter in ["activation", "hidden_layer_sizes"]:
             f1_scores = []
             f1_scores_train = []
             fit_times = []
             pred_times = []
 
-            if hyperparameter == "weak_learners":
-                for i in [i for i in range(1, 101, 1)]:
-                    boost = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), n_estimators=i)
+            if hyperparameter == "activation":
+                for i in ['identity', 'logistic', 'tanh', 'relu']:
+                    nn = MLPClassifier(activation=i)
 
                     fold_f1_scores_test = []
                     fold_f1_scores_train = []
@@ -66,13 +65,13 @@ def main():
                         y_test = y.iloc[test_i]
 
                         t1 = perf_counter()
-                        boost.fit(X_train, y_train)
+                        nn.fit(X_train, y_train)
                         t2 = perf_counter()
 
-                        y_pred = boost.predict(X_test)
+                        y_pred = nn.predict(X_test)
                         t3 = perf_counter()
 
-                        y_pred_train = boost.predict(X_train)
+                        y_pred_train = nn.predict(X_train)
 
                         fit_time = t2 - t1
                         pred_time = t3 - t2
@@ -102,7 +101,7 @@ def main():
 
                 # PLOT F1 SCORES
                 plot_results(
-                    title=f"Adaboost F1 Score for {hyperparameter} on {dataset}",
+                    title=f"NN F1 Score for {hyperparameter} on {dataset}",
                     list_1=f1_scores,
                     list_2=f1_scores_train,
                     x_label=hyperparameter,
@@ -110,11 +109,11 @@ def main():
                     list_1_label="Test Score",
                     list_2_label="Train Score",
                     dataset=dataset,
-                    algo="boost",
+                    algo="nn",
                     type=f"{hyperparameter}_f1")
                 # PLOT TIMES
                 plot_results(
-                    title=f"Adaboost Times for {hyperparameter} on {dataset}",
+                    title=f"NN Times for {hyperparameter} on {dataset}",
                     list_1=fit_times,
                     list_2=pred_times,
                     x_label=hyperparameter,
@@ -122,13 +121,14 @@ def main():
                     list_1_label="Train Times",
                     list_2_label="Predict Times",
                     dataset=dataset,
-                    algo="boost",
+                    algo="nn",
                     type=f"{hyperparameter}_times")
 
             else:
-                # hyperparameter = C
-                for i in np.linspace(0.000001, 1, 100):
-                    boost = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), learning_rate=i)
+                # hyperparameter = # of hidden layers
+                # for i in [x for x in itertools.product((10, 20, 30, 40, 50, 100), repeat=j)]:
+                for i in [1, 2, 3, 4, 5]:
+                    nn = MLPClassifier(hidden_layer_sizes=(10,)*i)
 
                     fold_f1_scores_test = []
                     fold_f1_scores_train = []
@@ -144,13 +144,13 @@ def main():
                         y_test = y.iloc[test_i]
 
                         t1 = perf_counter()
-                        boost.fit(X_train, y_train)
+                        nn.fit(X_train, y_train)
                         t2 = perf_counter()
 
-                        y_pred = boost.predict(X_test)
+                        y_pred = nn.predict(X_test)
                         t3 = perf_counter()
 
-                        y_pred_train = boost.predict(X_train)
+                        y_pred_train = nn.predict(X_train)
 
                         fit_time = t2 - t1
                         pred_time = t3 - t2
@@ -180,7 +180,7 @@ def main():
 
                 # PLOT F1 SCORES
                 plot_results(
-                    title=f"Adaboost F1 Score for {hyperparameter} on {dataset}",
+                    title=f"NN F1 Score for {hyperparameter} on {dataset}",
                     list_1=f1_scores,
                     list_2=f1_scores_train,
                     x_label=hyperparameter,
@@ -188,11 +188,11 @@ def main():
                     list_1_label="Test Score",
                     list_2_label="Train Score",
                     dataset=dataset,
-                    algo="boost",
+                    algo="nn",
                     type=f"{hyperparameter}_f1")
                 # PLOT TIMES
                 plot_results(
-                    title=f"Adaboost Times for {hyperparameter} on {dataset}",
+                    title=f"NN Times for {hyperparameter} on {dataset}",
                     list_1=fit_times,
                     list_2=pred_times,
                     x_label=hyperparameter,
@@ -200,10 +200,10 @@ def main():
                     list_1_label="Train Times",
                     list_2_label="Predict Times",
                     dataset=dataset,
-                    algo="boost",
+                    algo="nn",
                     type=f"{hyperparameter}_times")
 
-        # PLOT DEFAULT TREE
+        # PLOT DEFAULT NEURAL NETWORK
         X_train, X_test, y_train, y_test = train_test_split(
             X,
             y,
@@ -217,18 +217,19 @@ def main():
 
         for tree in ["default", "optimized"]:
             if tree == "default":
-                boost = AdaBoostClassifier()
+                nn = MLPClassifier()
             else:
                 if dataset == "titanic":
-                    boost = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), learning_rate=0.000001, n_estimators=1)
+                    nn = MLPClassifier(activation="identity", hidden_layer_sizes=(70, ))
                 else:
-                    boost = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=1), learning_rate=0.0094, n_estimators=46)
+                    nn = MLPClassifier(activation="logistic", hidden_layer_sizes=(50, 100, 20))
 
             train_sizes, train_scores, test_scores = learning_curve(
-                estimator=boost,
+                estimator=nn,
                 X=X_train,
                 y=y_train,
-                cv=10)
+                cv=10,
+                scoring="f1_weighted")
 
             train_scores_average = np.mean(train_scores, axis=1)
             test_scores_average = np.mean(test_scores, axis=1)
@@ -237,10 +238,23 @@ def main():
             plt.plot(train_sizes, test_scores_average, label="CV Score")
             plt.title(f"Learning Curve for {tree} on {dataset}")
             plt.xlabel("# of Samples")
-            plt.ylabel("Performance Score")
+            plt.ylabel("Performance (F1) Score")
             plt.legend()
             plt.grid()
-            plt.savefig(f"../images/{dataset}/boost/Learning Curve for {tree} on {dataset}.png")
+            # plt.savefig(f"../images/{dataset}/nn/Learning Curve for {tree} on {dataset}.png")
+            plt.show()
+
+            # PLOT THE LOSS CURVE
+            nn.fit(X_train, y_train)
+            plt.plot(nn.loss_curve_)
+
+            # plot the necessary stuff
+            plt.title(f"Loss Curve for {tree} on {dataset}")
+            plt.xlabel("Iteration Count")
+            plt.ylabel("Loss")
+            plt.grid()
+            plt.legend()
+            # plt.savefig(f"../images/{dataset}/nn/Loss Curve for {tree} on {dataset}.png")
             plt.show()
 
 
